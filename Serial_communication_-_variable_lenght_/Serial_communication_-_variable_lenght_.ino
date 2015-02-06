@@ -14,6 +14,10 @@
  * - the third Byte is 'DataLength" and says how many bytes will follow: this is the actual data. if '0' it means no further Bytes follow
  * messages are thus always a minimum of THREE Bytes: Begin (255). Mode, DataLength
  * 
+ 
+ ?? FIX: only go into a 'case' if new data has been received, otherwise if the new data arrives while in the case that does reading,
+ it will read while there and not through the proper initialise - we - 255 cycle.
+ In other words: all the reading needs to be contained and no other reading functions should happen, should only be picked up by thefirst part
  **/
 #include <Adafruit_NeoPixel.h>
 
@@ -27,14 +31,15 @@ int LoopIteration = 0;            // to track loop iterations
 int DiscardedBytes = 0;          // adds one everytime a byte is discarded
 const long CommsTimeout = 1000;           // When the program is expecting X bytes to arrive, this is how long it will wait before discarding
 
+int BytesInBuffer = 0;
 byte Mode = 0;
 byte DataLength = 0;
 int colorByte = 0;
 
 // Standard empty arrays to be filled with by the program
-byte STATE0[24] = {
-  255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, };
-
+byte STATEX[24] = {
+  0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0,  };
+byte STATE0[nLEDs*3];
 byte STATE1[nLEDs*3];
 byte STATE2[nLEDs*3];
 byte STATE3[nLEDs*3];
@@ -46,9 +51,9 @@ void setup() {
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 
-strip.setPixelColor(3, strip.Color(10,50,20)); // Set new pixel 'on'
-    strip.show();              // Refresh LED states
-    delay(500);
+  strip.setPixelColor(3, strip.Color(10,0,20)); // Set new pixel 'on'
+  strip.show();              // Refresh LED states
+delay(500);
 }
 
 void loop() 
@@ -63,6 +68,7 @@ void loop()
   Serial.println(currentMillis - previousMillis);
   previousMillis = currentMillis;
 
+  // Blink ArduinoLED to show program is running. One blink a loop
   if (LoopIteration % 2)
   { 
     digitalWrite(ArduinoLedPin, HIGH);
@@ -71,20 +77,21 @@ void loop()
   { 
     digitalWrite(ArduinoLedPin, LOW);
   }
+  // End blinkLed
 
-  delay (500); 
-
+  delay (1000); 
+  BytesInBuffer = Serial.available();
+  // "real" code
   Serial.print("]");
-  Serial.println(Serial.available());
-
+  Serial.println(BytesInBuffer);
+  if (BytesInBuffer == 0) { 
+    DiscardedBytes = 0; 
+  }
   // Start when data arrived
-  if (Serial.available() > 2) // all messages are minimum 3 Bytes so are waiting for 3 before getting going.
+  if (BytesInBuffer > 2) // all messages are minimum 3 Bytes so are waiting for 3 before getting going.
   {
-    int inByte=Serial.read();
-    Serial.print("inByte: ");
-    Serial.println(inByte);
 
-    if (inByte == 255) 
+    if (Serial.read() == 255) 
       // ********START OF MAIN PROGRAM READING DATA
     { // SECTION 1: MODE and LENGTH
       Serial.println("255! Yep");
@@ -96,11 +103,7 @@ void loop()
       DataLength=Serial.read();
       Serial.print("DataLength: ");
       Serial.println(DataLength);
-      // SECTION 2: Read in the databytes
-      if (DataLength > 1)
-      { // if there are databytes
-        Serial.readBytes((char *)STATE0, DataLength);
-      } // end reading databytes
+      
     }// End valid data section (ie data starts with 255)
     else
     { 
@@ -112,36 +115,64 @@ void loop()
 
   // ***** Runs every cycle, whether data arrived or not:
 
+  
+  
+  switch (Mode) 
 
-  for (int i=0; i<8; i++)
-  {
-    int pix = i;
-    Serial.print("pix: ");
-    Serial.println(pix);
-    int r = STATE0[i*3];
-    int g = STATE0[i*3 + 1];
-    int b = STATE0[i*3 + 2];
-    colorByte = strip.Color(r, g, b);
-    strip.setPixelColor(pix, strip.Color(r, g, b)); // Set new pixel 'on'
-    strip.show();              // Refresh LED states
-    break;
-  }
+  { //Start MODES Section
 
+  case 0: //All Off
+    {
+      for(int i=0; i<strip.numPixels(); i++) {
+        strip.setPixelColor(i, 0); // Erase pixel, but don't refresh!
+      }
+      strip.show();              // Refresh LED states
+      break;
+    }
+    case 1:
+    {
+    Serial.readBytes((char *)STATEX, DataLength);
+    ArrayToPixels(STATEX, 24);
+    }
+    
+  }  //Start MODES Section
+  
+  
+  ArrayToSerial(STATEX, 24);
+  ArrayToSerial(STATE0, 24);
 
-
-  for (int i=0; 
-  i< DataLength ; 
-  i++)
-  {
-    Serial.print(" ");
-    Serial.print(STATE0[i], DEC);
-    Serial.print(" ");
-  } 
-  Serial.println("");
 
 
 
 } //End main loop
+
+// Array to NeoPixels
+void ArrayToPixels(byte Array[],int N) {
+  for (int i = 0; i < N/3; i++)
+  {
+    int pix = i;
+    int r = Array[i*3];
+    int g = Array[i*3 + 1];
+    int b = Array[i*3 + 2];
+    colorByte = strip.Color(r, g, b);
+    strip.setPixelColor(pix, strip.Color(r, g, b)); // Set new pixel 'on'
+    strip.show();              // Refresh LED states
+  }
+}
+
+// PrintArrayToSerial
+void ArrayToSerial(byte Array[],int N) {
+
+
+  for (int i=0; i< N ; i++)
+  {
+    Serial.print(" ");
+    Serial.print(Array[i], DEC);
+    Serial.print(" ");
+  } 
+  Serial.println("");
+}
+
 
 
 

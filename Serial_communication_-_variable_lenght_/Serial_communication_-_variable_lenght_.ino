@@ -15,9 +15,12 @@
  * messages are thus always a minimum of THREE Bytes: Begin (255). Mode, DataLength
  * 
  **/
+#include <Adafruit_NeoPixel.h>
 
 const int ArduinoLedPin =  13;      // the number of the LED pin
+#define PIN 12
 const  int nLEDs = 8; // standard arraylength
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(nLEDs, PIN, NEO_GRB + NEO_KHZ800);
 
 unsigned long previousMillis = 0;        // will store last time LED was updated
 int LoopIteration = 0;            // to track loop iterations
@@ -26,9 +29,12 @@ const long CommsTimeout = 1000;           // When the program is expecting X byt
 
 byte Mode = 0;
 byte DataLength = 0;
+int colorByte = 0;
 
 // Standard empty arrays to be filled with by the program
-byte STATE0[nLEDs*3];
+byte STATE0[24] = {
+  255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, };
+
 byte STATE1[nLEDs*3];
 byte STATE2[nLEDs*3];
 byte STATE3[nLEDs*3];
@@ -37,10 +43,17 @@ byte STATE4[nLEDs*3];
 void setup() {
   Serial.begin(9600); 
   pinMode(ArduinoLedPin, OUTPUT);
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+
+strip.setPixelColor(3, strip.Color(10,50,20)); // Set new pixel 'on'
+    strip.show();              // Refresh LED states
+    delay(500);
 }
 
 void loop() 
-{ ++LoopIteration;
+{ 
+  ++LoopIteration;
   unsigned long currentMillis = millis();
   Serial.print("[ CurrentMillis: ");
   Serial.println(currentMillis);
@@ -52,7 +65,7 @@ void loop()
 
   if (LoopIteration % 2)
   { 
-   digitalWrite(ArduinoLedPin, HIGH);
+    digitalWrite(ArduinoLedPin, HIGH);
   }
   else
   { 
@@ -61,7 +74,7 @@ void loop()
 
   delay (500); 
 
-Serial.print("]");
+  Serial.print("]");
   Serial.println(Serial.available());
 
   // Start when data arrived
@@ -97,9 +110,42 @@ Serial.print("]");
     }//End invalid data section (ie data did not start with '255' and is non-255 byte is discarded)
   }// End reading / discarding data section 
 
-// ***** Runs every cycle, whether data arrived or not:
+  // ***** Runs every cycle, whether data arrived or not:
+
+
+  for (int i=0; i<8; i++)
+  {
+    int pix = i;
+    Serial.print("pix: ");
+    Serial.println(pix);
+    int r = STATE0[i*3];
+    int g = STATE0[i*3 + 1];
+    int b = STATE0[i*3 + 2];
+    colorByte = strip.Color(r, g, b);
+    strip.setPixelColor(pix, strip.Color(r, g, b)); // Set new pixel 'on'
+    strip.show();              // Refresh LED states
+    break;
+  }
+
+
+
+  for (int i=0; 
+  i< DataLength ; 
+  i++)
+  {
+    Serial.print(" ");
+    Serial.print(STATE0[i], DEC);
+    Serial.print(" ");
+  } 
+  Serial.println("");
+
+
 
 } //End main loop
+
+
+
+
 
 
 

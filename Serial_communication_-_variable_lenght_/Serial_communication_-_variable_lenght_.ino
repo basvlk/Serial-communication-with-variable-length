@@ -62,16 +62,18 @@ int colorByte = 0;
 // Standard empty arrays to be filled with by the program
 byte STATEX[24] = {
   0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0,  };
-byte STATE0[nLEDs*3]= {
+byte STATE10[nLEDs*3]= {
   10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 10 };
-byte STATE1[nLEDs*3]= {
+byte STATE11[nLEDs*3]= {
   10, 0, 0, 0, 50, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 10 };
-byte STATE2[nLEDs*3]= {
+byte STATE12[nLEDs*3]= {
   10, 0, 0, 0, 10, 10, 10, 50, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 10 };
-byte STATE3[nLEDs*3]= {
+byte STATE13[nLEDs*3]= {
   10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 50, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 10 };
-byte STATE4[nLEDs*3]= {
+byte STATE14[nLEDs*3]= {
   10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 50, 10, 0, 0, 10 };
+  byte STATE15[nLEDs*3]= {
+  10, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 50, 10, 0, 0, 10 }; 
 
 void setup() {
   Serial.begin(9600); 
@@ -107,7 +109,7 @@ void loop()
     LoopBlink(LoopIteration);
   }
 
-  
+
   // Start when data arrived
   if (BytesInBuffer > 2) // all messages are minimum 3 Bytes so are waiting for 3 before getting going.
   {
@@ -141,27 +143,46 @@ void loop()
 
       //NOT ENOUGH BYTES
       if (BytesInBuffer < DataLength){
+        WaitedForBytes= 0;
+        unsigned long StartMillis = millis();
 
-        if (Diagnostic == 1) { 
-          Serial.print("[ Waiting for ");
-          Serial.print(DataLength-BytesInBuffer);
-          Serial.println(" more Bytes");
+        while ( (BytesInBuffer < DataLength) && (WaitedForBytes < CommsTimeout )){
+          BytesInBuffer = Serial.available();
+          if (Diagnostic == 1) { 
+            Serial.print("[ DataLength: ");
+            Serial.print(DataLength);
+            Serial.print("=> BytesInBuffer: ");
+            Serial.println (BytesInBuffer);
+            Serial.print("[ CommsTimeout: ");
+            Serial.print(CommsTimeout);
+            Serial.print("=> WaitedForBytes: ");
+            Serial.println(WaitedForBytes);
+          }
+          WaitedForBytes = (millis() - StartMillis);
         }
-        delay (500);
-        BytesInBuffer = Serial.available();
+        /// End of while loop. Now there are 2 options: either the bytes arrived, or they didn't and the thing timed out
+        if (BytesInBuffer == DataLength){
+            if (Diagnostic == 1) {
+          Serial.print("[ Bytes arrived after waiting for  ");
+          Serial.print(WaitedForBytes);
+          Serial.println("ms");}
+        }
+
         if (BytesInBuffer < DataLength){
-        // Do some waiting around here, if that doesn't help:
-        Serial.print("[ ERROR: Missing ");
-        Serial.print(DataLength - BytesInBuffer);
-        Serial.println("Bytes in buffer, Aborting read operation, dumping data");
-        char dump[BytesInBuffer];
-        Serial.readBytes(dump, BytesInBuffer);}
+          Serial.print("[ ERROR: Missing ");
+          Serial.print(DataLength - BytesInBuffer);
+          Serial.print("Bytes in buffer, Waited ");
+          Serial.print(WaitedForBytes);
+          Serial.println("ms, Aborting read operation, dumping data");
+          char dump[BytesInBuffer];
+          Serial.readBytes(dump, BytesInBuffer);
+        }
 
       }
+      //TOO MANY BYTES
       if (BytesInBuffer > DataLength) {
-        //TOO MANY BYTES
         Serial.print("[ ERROR: ");
-        Serial.print(DataLength-BytesInBuffer);
+        Serial.print(BytesInBuffer - DataLength);
         Serial.println(" too many Bytes in buffer. Dumping data ");
         char dump[BytesInBuffer];
         Serial.readBytes(dump, BytesInBuffer);
@@ -197,6 +218,84 @@ void loop()
       OnceMode = 0;
       break;
     }
+  case 10:
+    {
+      Serial.readBytes((char *)STATE10, DataLength);
+      ArrayToPixels(STATE10, 24);
+      OnceMode = 0;
+      break;
+    }
+  case 11:
+    {
+      Serial.readBytes((char *)STATE11, DataLength);
+      ArrayToPixels(STATE11, 24);
+      OnceMode = 0;
+      break;
+    }
+  case 12:
+    {
+      Serial.readBytes((char *)STATE12, DataLength);
+      ArrayToPixels(STATE12, 24);
+      OnceMode = 0;
+      break;
+    }
+  case 13:
+    {
+      Serial.readBytes((char *)STATE13, DataLength);
+      ArrayToPixels(STATE13, 24);
+      OnceMode = 0;
+      break;
+    }
+  case 14:
+    {
+      Serial.readBytes((char *)STATE14, DataLength);
+      ArrayToPixels(STATE14, 24);
+      OnceMode = 0;
+      break;
+    }
+  case 15:
+    {
+      Serial.readBytes((char *)STATE15, DataLength);
+      ArrayToPixels(STATE15, 24);
+      OnceMode = 0;
+      break;
+    }
+    case 20:
+    {
+      ArrayToPixels(STATE10, 24);
+      OnceMode = 0;
+      break;
+    }
+        case 21:
+    {
+      ArrayToPixels(STATE11, 24);
+      OnceMode = 0;
+      break;
+    }
+        case 22:
+    {
+      ArrayToPixels(STATE12, 24);
+      OnceMode = 0;
+      break;
+    }
+        case 23:
+    {
+      ArrayToPixels(STATE13, 24);
+      OnceMode = 0;
+      break;
+    }
+        case 24:
+    {
+      ArrayToPixels(STATE14, 24);
+      OnceMode = 0;
+      break;
+    }
+        case 25:
+    {
+      ArrayToPixels(STATE15, 24);
+      OnceMode = 0;
+      break;
+    }
   case 99: //Mode 99 is CONFIG. Bytes set: Diagnostic, Delay
     {
       Diagnostic = Serial.read();
@@ -216,6 +315,7 @@ void loop()
       OnceMode = 0;
       break;
     }
+    
   default: 
     if (Diagnostic == 1) { 
       Serial.print("[ Once Mode ");
@@ -258,7 +358,12 @@ void loop()
   if (ArrayDiag == 1)
   {
     ArrayToSerial(STATEX, 24);
-    ArrayToSerial(STATE0, 24);
+    ArrayToSerial(STATE10, 24);
+    ArrayToSerial(STATE11, 24);
+    ArrayToSerial(STATE12, 24);
+    ArrayToSerial(STATE13, 24);
+    ArrayToSerial(STATE14, 24);
+    ArrayToSerial(STATE15, 24);
   }
   if (Diagnostic == 1) {  
     Serial.print("[ **** END OF LOOP ");
@@ -310,6 +415,7 @@ void LoopBlink(int Loop)
   }
 }
 // End blinkLed
+
 
 
 
